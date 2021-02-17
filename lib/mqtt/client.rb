@@ -275,16 +275,21 @@ module MQTT
         # Start packet reading thread
         @read_thread = Thread.new(Thread.current) do |parent|
           Thread.current[:parent] = parent
-          receive_packet while connected?
-
-          # Should not reach here on normal state since `disconnect` kills this
-          # thread, but it will occur when `receive_packet` catches no error and
-          # `connected?` returns false. An error should be raised in this case
-          # too to break `get` loop.
-          @socket_semaphore.synchronize do
-            close_socket(false)
+          no_error = true
+          while no_error and connected? do
+            no_error = receive_packet
           end
-          Thread.current[:parent].raise(MQTT::NotConnectedException)
+
+          if no_error
+            # Should not reach here on normal state since `disconnect` kills
+            # this thread, but it will occur when `receive_packet` catches no
+            # error and # `connected?` returns false. An error should be raised
+            # in this case too to break `get` loop.
+            @socket_semaphore.synchronize do
+              close_socket(false)
+            end
+            Thread.current[:parent].raise(MQTT::NotConnectedException)
+          end
         end
       end
 
@@ -482,12 +487,14 @@ module MQTT
         end
         keep_alive!
       end
+      true
     # Pass exceptions up to parent thread
     rescue Exception => exp
       @socket_semaphore.synchronize do
         close_socket(false)
       end
       Thread.current[:parent].raise(exp)
+      false
     end
 
     def wait_for_puback(id, queue)

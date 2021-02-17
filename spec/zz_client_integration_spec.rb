@@ -19,7 +19,7 @@ describe "a client talking to a server" do
   end
 
   after(:each) do
-    @client.disconnect(false)
+    @client.disconnect
     @server.stop
   end
 
@@ -159,7 +159,6 @@ describe "a client talking to a server" do
       @server.respond_to_pings = false
       @client.keep_alive = keep_alive
       @client.connect
-      allow(@client).to receive(:socket_alive?).and_return(true)
       sleep(keep_alive * 3)
     end
 
