@@ -163,8 +163,8 @@ module MQTT
       end
 
       # Initialise private instance variables
-      @last_ping_request = Time.now
-      @last_ping_response = Time.now
+      @last_ping_request = current_time
+      @last_ping_response = current_time
       @socket = nil
       @read_queue = Queue.new
       @pubacks = {}
@@ -500,9 +500,9 @@ module MQTT
       if packet.class == MQTT::Packet::Publish
         # Add to queue
         @read_queue.push(packet)
-        @last_ping_response = Time.now if @assume_publish_response_as_pingresp
+        @last_ping_response = current_time if @assume_publish_response_as_pingresp
       elsif packet.class == MQTT::Packet::Pingresp
-        @last_ping_response = Time.now
+        @last_ping_response = current_time
       elsif packet.class == MQTT::Packet::Puback
         @pubacks_semaphore.synchronize do
           @pubacks[packet.id] << packet
@@ -552,11 +552,11 @@ module MQTT
       return unless @keep_alive > 0 && socket_alive?
 
       response_timeout = (@keep_alive * 1.5).ceil
-      if Time.now >= @last_ping_request + @keep_alive
+      if current_time >= @last_ping_request + @keep_alive
         packet = MQTT::Packet::Pingreq.new
         send_packet(packet, false)
-        @last_ping_request = Time.now
-      elsif Time.now > @last_ping_response + response_timeout
+        @last_ping_request = current_time
+      elsif current_time > @last_ping_response + response_timeout
         raise MQTT::ProtocolException, "No Ping Response received for #{response_timeout} seconds"
       end
     end
